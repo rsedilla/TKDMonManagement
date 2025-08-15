@@ -14,10 +14,10 @@ class Leader extends Model
     {
         parent::boot();
 
-        // Prevent deletion if referenced in Equipping
-        static::deleting(function ($leader) {
-            if ($leader->equipping()->exists()) {
-                throw new \Exception('Cannot delete: This leader is referenced in Equipping.');
+        // Automatically calculate age from birthday when saving
+        static::saving(function ($leader) {
+            if ($leader->birthday && !$leader->age) {
+                $leader->age = Carbon::parse($leader->birthday)->age;
             }
         });
 
@@ -40,7 +40,6 @@ class Leader extends Model
 
     protected $fillable = [
         'name',
-        'position',
         'network',
         'email',
         'phone',
@@ -64,10 +63,10 @@ class Leader extends Model
     // Automatically calculate age from birthday
     public function getAgeAttribute($value)
     {
-        if ($this->birthday) {
+        if ($this->birthday && !$value) {
             return $this->birthday->age;
         }
-        return $value; // fallback to manual age if no birthday
+        return $value; // return stored age if available
     }
 
     public function cellMembers()
@@ -174,6 +173,54 @@ class Leader extends Model
             'active_cell_members' => $this->cellMembers()->where('status', true)->count(),
             'active_leaders' => $this->allChildLeaders()->where('status', true)->count(),
         ];
+    }
+
+    /**
+     * Check if leader has dependencies that prevent deletion
+     */
+    public function hasDependencies(): bool
+    {
+        return $this->equippings()->count() > 0 || 
+               $this->cellMembers()->count() > 0 || 
+               $this->childLeaders()->count() > 0 || 
+               $this->cellGroups()->count() > 0;
+    }
+
+    /**
+     * Get detailed dependency information
+     */
+    public function getDependencyInfo(): array
+    {
+        return [
+            'equipping_count' => $this->equippings()->count(),
+            'cell_members_count' => $this->cellMembers()->count(),
+            'child_leaders_count' => $this->childLeaders()->count(),
+            'cell_groups_count' => $this->cellGroups()->count(),
+        ];
+    }
+
+    /**
+     * Get dependency summary as text
+     */
+    public function getDependencySummary(): string
+    {
+        $info = $this->getDependencyInfo();
+        $dependencies = [];
+        
+        if ($info['equipping_count'] > 0) {
+            $dependencies[] = "{$info['equipping_count']} equipping record(s)";
+        }
+        if ($info['cell_members_count'] > 0) {
+            $dependencies[] = "{$info['cell_members_count']} cell member(s)";
+        }
+        if ($info['child_leaders_count'] > 0) {
+            $dependencies[] = "{$info['child_leaders_count']} subordinate leader(s)";
+        }
+        if ($info['cell_groups_count'] > 0) {
+            $dependencies[] = "{$info['cell_groups_count']} cell group(s)";
+        }
+        
+        return implode(', ', $dependencies);
     }
 
     public function equipping()

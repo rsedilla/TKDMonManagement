@@ -30,10 +30,6 @@ class ChildLeadersRelationManager extends RelationManager
                             ->required()
                             ->maxLength(255),
                         
-                        Forms\Components\TextInput::make('position')
-                            ->required()
-                            ->maxLength(255),
-                        
                         Forms\Components\TextInput::make('department')
                             ->maxLength(255),
                         
@@ -63,12 +59,6 @@ class ChildLeadersRelationManager extends RelationManager
                     ->searchable()
                     ->sortable()
                     ->weight('medium'),
-                
-                Tables\Columns\TextColumn::make('position')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->color('primary'),
                 
                 Tables\Columns\TextColumn::make('level')
                     ->label('Level')
